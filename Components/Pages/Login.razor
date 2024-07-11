@@ -1,0 +1,38 @@
+@page "/login"
+@using test.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject CustomAuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<EditForm Model="user" OnValidSubmit="HandleLogin" FormName="loginForm">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div>
+        <label>Username:</label>
+        <InputText @bind-Value="user.Username" />
+    </div>
+    <div>
+        <label>Password:</label>
+        <InputText @bind-Value="user.Password" type="password" />
+    </div>
+    <button type="submit">Login</button>
+</EditForm>
+
+@code {
+    [SupplyParameterFromForm]
+    private User user { get; set; } = new User();
+
+    private async Task HandleLogin()
+    {
+        await AuthStateProvider.Login(user.Username, user.Password);
+        Navigation.NavigateTo("/profil");
+    }
+
+    public class User
+    {
+        public string Username { get; set; }
+        public string Password { get; set; }
+    }
+}

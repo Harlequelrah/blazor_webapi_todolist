@@ -1,0 +1,71 @@
+@page "/register"
+@using test.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<EditForm Model="user" OnValidSubmit="HandleRegistration" FormName="registerForm">
+
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div>
+        <label>Username:</label>
+        <InputText @bind-Value="user.Username" />
+    </div>
+    <div>
+        <label>Password:</label>
+        <InputText @bind-Value="user.Password" type="password" />
+    </div>
+    <button type="submit">Register</button>
+</EditForm>
+
+@code {
+
+    [SupplyParameterFromForm]
+    private User user { get; set; } = new User();
+
+    private async Task HandleRegistration()
+    {
+        var response = await Http.PostAsJsonAsync("http://localhost:5208/api/User/register", new { username = user.Username, password = user.Password });
+        if (response.IsSuccessStatusCode)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        else
+        {
+            Console.WriteLine("Username: " + user.Username);
+            Console.WriteLine("Password: " + user.Password);
+            var errorResponse = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+            if (errorResponse != null && errorResponse.Errors != null)
+            {
+                foreach (var error in errorResponse.Errors)
+                {
+                    foreach (var errorMessage in error.Value)
+                    {
+                        Console.WriteLine($"{error.Key}: {errorMessage}");
+                    }
+                }
+            }
+            else
+            {
+                Console.WriteLine("Unknown error occurred.");
+            }
+        }
+    }
+
+    public class User
+    {
+        public string Username { get; set; }
+        public string Password { get; set; }
+    }
+
+    public class ErrorResponse
+    {
+        public Dictionary<string, string[]> Errors { get; set; }
+        public string Type { get; set; }
+        public string Title { get; set; }
+        public int Status { get; set; }
+        public string TraceId { get; set; }
+    }
+}

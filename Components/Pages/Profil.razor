@@ -1,0 +1,69 @@
+@page "/profil"
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.JSInterop
+@using test.Services
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+
+<h3>Profil</h3>
+
+<p>Utilisateur : @userName</p>
+<p>ID : @userId</p>
+
+<button class="btn btn-danger" @onclick="Logout">Déconnexion</button>
+
+@code {
+    private string userName = "Chargement...";
+    private string userId = "Chargement...";
+    private string errorMessage;
+
+    private async Task Logout()
+    {
+        try
+        {
+            await ((CustomAuthenticationStateProvider)AuthenticationStateProvider).Logout();
+            // Effacer les données locales
+            await JSRuntime.InvokeVoidAsync("localStorage.clear");
+            // Redirection vers la page de login ou une autre page après déconnexion
+            NavigationManager.NavigateTo("/login");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erreur lors de la déconnexion : {ex.Message}";
+            Console.WriteLine($"Exception lors de la déconnexion : {ex}");
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+                var user = authState.User;
+
+                if (user.Identity.IsAuthenticated)
+                {
+                    userName = user.FindFirst(ClaimTypes.Name)?.Value ?? "Utilisateur inconnu";
+                    userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "ID non trouvé";
+                }
+                else
+                {
+                    userName = "Utilisateur non authentifié";
+                    userId = "ID non trouvé";
+                }
+
+                StateHasChanged(); // Informer Blazor que l'état a changé et doit être rendu à nouveau
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Erreur lors de l'initialisation du profil : {ex.Message}";
+                Console.WriteLine($"Exception lors de l'initialisation du profil : {ex}");
+            }
+        }
+    }
+}
