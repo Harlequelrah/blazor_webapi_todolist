@@ -5,6 +5,13 @@
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger">
+        @errorMessage
+    </div>
+}
+
 <EditForm Model="user" OnValidSubmit="HandleLogin" FormName="loginForm">
     <DataAnnotationsValidator />
     <ValidationSummary />
@@ -23,11 +30,27 @@
 @code {
     [SupplyParameterFromForm]
     private User user { get; set; } = new User();
+    private string errorMessage;
 
     private async Task HandleLogin()
     {
-        await AuthStateProvider.Login(user.Username, user.Password);
-        Navigation.NavigateTo("/profil");
+        errorMessage = null; // Clear previous error message
+
+        try
+        {
+            await AuthStateProvider.Login(user.Username, user.Password);
+            Navigation.NavigateTo("/profil");
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = "Nom d'utilisateur ou mot de passe incorrect.";
+            Console.WriteLine($"Login error: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Une erreur inconnue s'est produite.";
+            Console.WriteLine($"Unexpected error: {ex.Message}");
+        }
     }
 
     public class User
