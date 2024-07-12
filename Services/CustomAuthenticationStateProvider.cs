@@ -5,8 +5,11 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Json;
+using System.IdentityModel.Tokens.Jwt;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
+using Microsoft.AspNetCore.Components.Routing;
+
 
 namespace test.Services
 {
@@ -25,6 +28,7 @@ namespace test.Services
             _jsRuntime = jsRuntime;
             _navigation = navigation;
             _afterRenderActions = new ConcurrentQueue<Func<Task>>();
+            _navigation.LocationChanged += HandleLocationChanged;
         }
 
         public override async Task<AuthenticationState> GetAuthenticationStateAsync()
@@ -72,6 +76,14 @@ namespace test.Services
 
             QueueTokenStorage();
         }
+        private void HandleLocationChanged(object sender, LocationChangedEventArgs args)
+        {
+            // Déconnecter l'utilisateur et supprimer le token du localStorage lorsqu'il quitte la page
+            if (!args.Location.Contains("/login")) // Vérifiez que l'utilisateur ne navigue pas vers la page de login
+            {
+                Logout(); // Déconnexion de l'utilisateur
+            }
+        }
 
         public async Task Logout()
         {
@@ -112,6 +124,7 @@ namespace test.Services
             }
         }
 
+
         public async ValueTask DisposeAsync()
         {
             if (_tokenStored)
@@ -126,6 +139,29 @@ namespace test.Services
             {
                 await action();
             }
+        }
+        private async Task<string> GetRefreshTokenFromServer()
+        {
+            var response = await _httpClient.GetStringAsync("http://localhost:5208/api/User/get-refresh-token");
+            return response;
+        }
+        public async Task<bool> TryRefreshTokenAsync()
+        {
+            var refreshRequest = new { RefreshToken = await GetRefreshTokenFromServer() };
+
+            var refreshTokenResponse = await _httpClient.PostAsJsonAsync("http://localhost:5208/api/User/refresh-token", refreshRequest);
+
+            if (refreshTokenResponse.IsSuccessStatusCode)
+            {
+                var result = await refreshTokenResponse.Content.ReadFromJsonAsync<AuthResponse>();
+                _token = result.Token;
+
+                await SecureToken();
+                NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+                return true;
+            }
+
+            return false;
         }
     }
 
@@ -192,19 +228,34 @@ namespace test.Services
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var token = await _authenticationStateProvider.GetTokenAsync();
-            Console.WriteLine($"Adding token to request: {token}");
+            var jwtHandler = new JwtSecurityTokenHandler();
+            var jwtToken = jwtHandler.ReadToken(token) as JwtSecurityToken;
+            var tokenExpired = jwtToken.ValidTo < DateTime.UtcNow;
+
+            if (tokenExpired)
+            {
+                var refreshTokenSuccess = await _authenticationStateProvider.TryRefreshTokenAsync();
+                if (refreshTokenSuccess)
+                {
+                    token = await _authenticationStateProvider.GetTokenAsync();
+                }
+                else
+                {
+                    // Token refresh failed, handle accordingly
+                    throw new UnauthorizedAccessException("Session expired. Please log in again.");
+                }
+            }
 
             if (!string.IsNullOrEmpty(token))
             {
                 request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
             }
-            foreach (var header in request.Headers)
-            {
-                Console.WriteLine($"{header.Key}: {string.Join(", ", header.Value)}");
-            }
 
             return await base.SendAsync(request, cancellationToken);
         }
+
+
+
     }
 
 }
