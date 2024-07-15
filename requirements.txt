@@ -1,3 +1,4 @@
 dotnet add package System.Net.Http.Json
 dotnet add package Microsoft.AspNetCore.Components.Authorization
 dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer
+dotnet add package Microsoft.AspNetCore.Components.WebAssembly.Authentication

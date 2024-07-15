@@ -2,19 +2,23 @@
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Authorization
 @using test.Services
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager NavigationManager
 
-<h3>Profil</h3>
 
+<h3>Profil</h3>
+<div>
 <p>Utilisateur : @userName</p>
 <p>ID : @userId</p>
+</div>
+
 
 <button class="btn btn-danger" @onclick="Logout">Déconnexion</button>
-
+<a href="/manage/TodoItem">Todo</a>
 @code {
     private string userName = "Chargement...";
     private string userId = "Chargement...";
@@ -53,8 +57,7 @@
                 }
                 else
                 {
-                    userName = "Utilisateur non authentifié";
-                    userId = "ID non trouvé";
+                    NavigationManager.NavigateTo("/login", true);
                 }
 
                 StateHasChanged(); // Informer Blazor que l'état a changé et doit être rendu à nouveau
@@ -67,3 +70,5 @@
         }
     }
 }
+
+

@@ -39,6 +39,10 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xMb2dpbi5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
+[E:/Programmation/Visual Studio 2022/source/test/Components/Pages/ManageTodo.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xNYW5hZ2VUb2RvLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
 [E:/Programmation/Visual Studio 2022/source/test/Components/Pages/Profil.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xQcm9maWwucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 

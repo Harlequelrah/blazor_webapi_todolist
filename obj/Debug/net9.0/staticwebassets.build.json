@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "4k/a3ntVE9hAz2cMTOD9g1EY+i1qpzyvZlFiT15/Yf4=",
+  "Hash": "3MtTVrgsoA8i++tO8gcj4ItuJQ0O2nPakOX60hfY+/g=",
   "Source": "test",
   "BasePath": "_content/test",
   "Mode": "Default",
@@ -16,6 +16,25 @@
     }
   ],
   "Assets": [
+    {
+      "Identity": "C:\\Users\\LENOVO\\.nuget\\packages\\microsoft.aspnetcore.components.webassembly.authentication\\8.0.7\\staticwebassets\\AuthenticationService.js",
+      "SourceId": "Microsoft.AspNetCore.Components.WebAssembly.Authentication",
+      "SourceType": "Package",
+      "ContentRoot": "C:\\Users\\LENOVO\\.nuget\\packages\\microsoft.aspnetcore.components.webassembly.authentication\\8.0.7\\staticwebassets\\",
+      "BasePath": "_content/Microsoft.AspNetCore.Components.WebAssembly.Authentication",
+      "RelativePath": "AuthenticationService.js",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "C:\\Users\\LENOVO\\.nuget\\packages\\microsoft.aspnetcore.components.webassembly.authentication\\8.0.7\\staticwebassets\\AuthenticationService.js"
+    },
     {
       "Identity": "E:\\Programmation\\Visual Studio 2022\\source\\test\\obj\\Debug\\net9.0\\compressed\\96h1ecghux.gz",
       "SourceId": "test",
@@ -72,6 +91,25 @@
       "CopyToOutputDirectory": "Never",
       "CopyToPublishDirectory": "PreserveNewest",
       "OriginalItemSpec": "E:\\Programmation\\Visual Studio 2022\\source\\test\\wwwroot\\bootstrap\\bootstrap.min.css.map"
+    },
+    {
+      "Identity": "E:\\Programmation\\Visual Studio 2022\\source\\test\\obj\\Debug\\net9.0\\compressed\\s9p6mxxdem.gz",
+      "SourceId": "Microsoft.AspNetCore.Components.WebAssembly.Authentication",
+      "SourceType": "Package",
+      "ContentRoot": "C:\\Users\\LENOVO\\.nuget\\packages\\microsoft.aspnetcore.components.webassembly.authentication\\8.0.7\\staticwebassets\\",
+      "BasePath": "_content/Microsoft.AspNetCore.Components.WebAssembly.Authentication",
+      "RelativePath": "AuthenticationService.js.gz",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Alternative",
+      "AssetMergeBehavior": "",
+      "AssetMergeSource": "",
+      "RelatedAsset": "C:\\Users\\LENOVO\\.nuget\\packages\\microsoft.aspnetcore.components.webassembly.authentication\\8.0.7\\staticwebassets\\AuthenticationService.js",
+      "AssetTraitName": "Content-Encoding",
+      "AssetTraitValue": "gzip",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "C:\\Users\\LENOVO\\.nuget\\packages\\microsoft.aspnetcore.components.webassembly.authentication\\8.0.7\\staticwebassets\\AuthenticationService.js"
     },
     {
       "Identity": "E:\\Programmation\\Visual Studio 2022\\source\\test\\obj\\Debug\\net9.0\\compressed\\sfiji35ury.gz",

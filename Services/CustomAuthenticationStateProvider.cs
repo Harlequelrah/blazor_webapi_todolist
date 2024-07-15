@@ -2,12 +2,14 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.JSInterop;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Json;
 using System.IdentityModel.Tokens.Jwt;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
+using System.Threading;
 using Microsoft.AspNetCore.Components.Routing;
 
 
@@ -28,7 +30,6 @@ namespace test.Services
             _jsRuntime = jsRuntime;
             _navigation = navigation;
             _afterRenderActions = new ConcurrentQueue<Func<Task>>();
-            _navigation.LocationChanged += HandleLocationChanged;
         }
 
         public override async Task<AuthenticationState> GetAuthenticationStateAsync()
@@ -75,14 +76,6 @@ namespace test.Services
             Console.WriteLine($"Token from localStorage after login: {storedToken}");
 
             QueueTokenStorage();
-        }
-        private void HandleLocationChanged(object sender, LocationChangedEventArgs args)
-        {
-            // Déconnecter l'utilisateur et supprimer le token du localStorage lorsqu'il quitte la page
-            if (!args.Location.Contains("/login")) // Vérifiez que l'utilisateur ne navigue pas vers la page de login
-            {
-                Logout(); // Déconnexion de l'utilisateur
-            }
         }
 
         public async Task Logout()
@@ -219,6 +212,7 @@ namespace test.Services
     public class JwtAuthorizationHandler : DelegatingHandler
     {
         private readonly CustomAuthenticationStateProvider _authenticationStateProvider;
+        private bool _isPrerendering = true; // Cette variable est utilisée pour suivre l'état du pré-rendu
 
         public JwtAuthorizationHandler(CustomAuthenticationStateProvider authenticationStateProvider)
         {
@@ -227,35 +221,68 @@ namespace test.Services
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            var token = await _authenticationStateProvider.GetTokenAsync();
-            var jwtHandler = new JwtSecurityTokenHandler();
-            var jwtToken = jwtHandler.ReadToken(token) as JwtSecurityToken;
-            var tokenExpired = jwtToken.ValidTo < DateTime.UtcNow;
 
-            if (tokenExpired)
+            var response = "sans header";
+
+            if (!_isPrerendering)
             {
-                var refreshTokenSuccess = await _authenticationStateProvider.TryRefreshTokenAsync();
-                if (refreshTokenSuccess)
+                var token = await _authenticationStateProvider.GetTokenAsync();
+
+
+                Console.WriteLine($"le token {token}");
+                try
                 {
-                    token = await _authenticationStateProvider.GetTokenAsync();
+
+                    var jwtHandler = new JwtSecurityTokenHandler();
+                    var jwtToken = jwtHandler.ReadToken(token) as JwtSecurityToken;
+                    var tokenExpired = jwtToken.ValidTo < DateTime.UtcNow;
+
+                    if (tokenExpired)
+                    {
+                        var refreshTokenSuccess = await _authenticationStateProvider.TryRefreshTokenAsync();
+                        if (refreshTokenSuccess)
+                        {
+                            token = await _authenticationStateProvider.GetTokenAsync();
+                        }
+                        else
+                        {
+                            // Token refresh failed, handle accordingly
+                            throw new UnauthorizedAccessException("Session expired. Please log in again.");
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(token))
+                    {
+                        response = token;
+                        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+                    }
+                    else
+                    {
+                        Console.WriteLine("Token is null or empty.");
+                    }
+
+
                 }
-                else
+                catch (Exception ex)
                 {
-                    // Token refresh failed, handle accordingly
-                    throw new UnauthorizedAccessException("Session expired. Please log in again.");
+                    Console.WriteLine($"Error in JwtAuthorizationHandler: {ex.Message}");
+                    throw;
                 }
             }
-
-            if (!string.IsNullOrEmpty(token))
-            {
-                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-            }
-
+            Console.WriteLine($"avec le token {response}");
             return await base.SendAsync(request, cancellationToken);
+
+
         }
 
 
 
+        // Cette méthode devrait être appelée dans OnAfterRenderAsync de votre composant Blazor pour indiquer que le pré-rendu est terminé
+        public void NotifyPostPrerender()
+        {
+            _isPrerendering = false;
+        }
     }
 
 }
