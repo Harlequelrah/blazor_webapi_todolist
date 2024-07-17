@@ -16,18 +16,18 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddTransient<JwtAuthorizationHandler>();
 
-builder.Services.AddHttpClient("TodoAPI", client =>
+builder.Services.AddHttpClient("authClientAPI", client =>
 {
     client.BaseAddress = new Uri("http://localhost:5208/api/");
     // Remplacez par l'URL de votre API
 }).AddHttpMessageHandler<JwtAuthorizationHandler>();
-builder.Services.AddHttpClient("ApiWithoutAuth", client =>
+builder.Services.AddHttpClient("noauthClientAPI", client =>
 {
     client.BaseAddress = new Uri("http://localhost:5208/api/");
 });
 
-builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("TodoAPI"));
-builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("ApiWithoutAuth"));
+builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("authClientAPI"));
+builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("noauthClientAPI"));
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddAuthentication(options =>
@@ -87,6 +87,7 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<TodoItemService>();
+builder.Services.AddScoped<PostPrerenderService>();
 builder.Services.AddScoped<CustomAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(provider => provider.GetRequiredService<CustomAuthenticationStateProvider>());
 

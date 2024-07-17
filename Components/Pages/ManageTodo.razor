@@ -144,6 +144,13 @@ else
     private async Task Delete(int id)
     {
         var confirmDelete = await JS.InvokeAsync<bool>("confirm", "Voulez-vous vraiment supprimer cette TodoItem ?");
+        Console.WriteLine($"is first render {isFirstRender}");
+        authstateprovider.NotifyPostPrerender();
+        var isprerendering= await authstateprovider.GetRendering();
+
+        Console.WriteLine($" rendering {isprerendering}");
+        var token = await authstateprovider.GetTokenAsync();
+        Console.WriteLine($" token {token}");
         if (confirmDelete)
         {
             try

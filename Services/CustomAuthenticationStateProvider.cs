@@ -82,7 +82,7 @@ namespace test.Services
 
             try
             {
-                var client = _httpClientFactory.CreateClient("ApiWithoutAuth");
+                var client = _httpClientFactory.CreateClient("noauthClientAPI");
 
                 _logger.LogInformation("Sending login request...");
                 var response = await client.PostAsJsonAsync($"{_configuration["ApiBaseUrl"]}/api/User/login", new { username, password });
@@ -143,162 +143,176 @@ namespace test.Services
 
         public async Task Logout()
         {
+            _token = null;
+            await SecureToken();
             try
             {
-            _logger.LogInformation("Logging out user...");
-            if (_httpContextAccessor.HttpContext.Response.HasStarted)
-            {
-                _logger.LogWarning("Response has already started. Deferring sign-out to OnAfterRenderAsync.");
-                _afterRenderActions.Enqueue(async () =>
+                _logger.LogInformation("Logging out user...");
+                if (_httpContextAccessor.HttpContext.Response.HasStarted)
+                {
+                    _logger.LogWarning("Response has already started. Deferring sign-out to OnAfterRenderAsync.");
+                    _afterRenderActions.Enqueue(async () =>
+                    {
+                        await _httpContextAccessor.HttpContext.SignOutAsync("Cookies");
+                        NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+                        _logger.LogInformation("User logged out successfully.");
+                    });
+                }
+                else
                 {
                     _token = null;
                     await SecureToken();
                     await _httpContextAccessor.HttpContext.SignOutAsync("Cookies");
                     NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
                     _logger.LogInformation("User logged out successfully.");
-                });
-            }
-            else
-            {
-                _token = null;
-                await SecureToken();
-                await _httpContextAccessor.HttpContext.SignOutAsync("Cookies");
-                NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
-                _logger.LogInformation("User logged out successfully.");
-            }
+                }
 
-            _logger.LogInformation("User logged out  in successfully.");
-        }
+                _logger.LogInformation("User logged out  in successfully.");
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Loggin out  failed for user");
             }
-    }
+        }
 
 
-public async Task<string> GetTokenAsync()
-{
-    if (_isPrerendering) return null;
-    return await _jsRuntime.InvokeAsync<string>("localStorage.getItem", "authToken");
-}
-
-private async Task SecureToken()
-{
-    if (string.IsNullOrEmpty(_token))
-    {
-        await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", "authToken");
-        _logger.LogInformation("Token removed from localStorage");
-    }
-    else
-    {
-        await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "authToken", _token);
-        _logger.LogInformation("Token stored in localStorage");
-    }
-}
-
-public async ValueTask DisposeAsync()
-{
-    if (_tokenStored)
-    {
-        await SecureToken();
-    }
-}
-
-public void NotifyPostPrerender()
-{
-    _isPrerendering = false;
-}
-
-public async Task OnAfterRenderAsync(bool firstRender)
-{
-    if (_afterRenderActions.TryDequeue(out var action))
-    {
-        await action();
-    }
-}
-
-private async Task<string> GetRefreshTokenFromServer()
-{
-    var response = await _httpClient.GetStringAsync("http://localhost:5208/api/User/get-refresh-token");
-    return response;
-}
-
-public async Task<bool> TryRefreshTokenAsync()
-{
-    var refreshRequest = new { RefreshToken = await GetRefreshTokenFromServer() };
-    var refreshTokenResponse = await _httpClient.PostAsJsonAsync("http://localhost:5208/api/User/refresh-token", refreshRequest);
-
-    if (refreshTokenResponse.IsSuccessStatusCode)
-    {
-        var result = await refreshTokenResponse.Content.ReadFromJsonAsync<AuthResponse>();
-        _token = result.Token;
-
-        await SecureToken();
-        NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
-        return true;
-    }
-
-    return false;
-}
-    }
-
-    public class AuthResponse
-{
-    public string Token { get; set; }
-}
-
-public static class JwtParser
-{
-    public static IEnumerable<Claim> ParseClaimsFromJwt(string jwt)
-    {
-        var claims = new List<Claim>();
-        var payload = jwt.Split('.')[1];
-        var jsonBytes = ParseBase64WithoutPadding(payload);
-        var keyValuePairs = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonBytes);
-
-        if (keyValuePairs != null)
+        public async Task<string> GetTokenAsync()
         {
-            foreach (var kvp in keyValuePairs)
+            if (_isPrerendering) return null;
+            return await _jsRuntime.InvokeAsync<string>("localStorage.getItem", "authToken");
+        }
+
+        private async Task SecureToken()
+        {
+            if (string.IsNullOrEmpty(_token))
             {
-                claims.Add(new Claim(kvp.Key, kvp.Value.ToString()));
+                await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", "authToken");
+                _logger.LogInformation("Token removed from localStorage");
+            }
+            else
+            {
+                await _jsRuntime.InvokeVoidAsync("localStorage.setItem", "authToken", _token);
+                _logger.LogInformation("Token stored in localStorage");
             }
         }
 
-        return claims;
-    }
-
-    private static byte[] ParseBase64WithoutPadding(string base64)
-    {
-        switch (base64.Length % 4)
+        public async ValueTask DisposeAsync()
         {
-            case 2: base64 += "=="; break;
-            case 3: base64 += "="; break;
-        }
-        return Convert.FromBase64String(base64);
-    }
-}
-
-public class JwtAuthorizationHandler : DelegatingHandler
-{
-    private readonly CustomAuthenticationStateProvider _authenticationStateProvider;
-
-    public JwtAuthorizationHandler(CustomAuthenticationStateProvider authenticationStateProvider)
-    {
-        _authenticationStateProvider = authenticationStateProvider ?? throw new ArgumentNullException(nameof(authenticationStateProvider));
-    }
-
-    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-    {
-        // Add JWT token to the request headers using GetTokenAsync from CustomAuthenticationStateProvider
-        string accessToken = await _authenticationStateProvider.GetTokenAsync();
-        if (!string.IsNullOrEmpty(accessToken))
-        {
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            if (_tokenStored)
+            {
+                await SecureToken();
+            }
         }
 
-        // Call base.SendAsync to send the request
-        return await base.SendAsync(request, cancellationToken);
+        public void NotifyPostPrerender()
+        {
+            _isPrerendering = false;
+        }
+
+        public async Task OnAfterRenderAsync(bool firstRender)
+        {
+            if (_afterRenderActions.TryDequeue(out var action))
+            {
+                await action();
+            }
+        }
+
+        private async Task<string> GetRefreshTokenFromServer()
+        {
+            var response = await _httpClient.GetStringAsync("http://localhost:5208/api/User/get-refresh-token");
+            return response;
+        }
+
+        public async Task<bool> TryRefreshTokenAsync()
+        {
+            var refreshRequest = new { RefreshToken = await GetRefreshTokenFromServer() };
+            var refreshTokenResponse = await _httpClient.PostAsJsonAsync("http://localhost:5208/api/User/refresh-token", refreshRequest);
+
+            if (refreshTokenResponse.IsSuccessStatusCode)
+            {
+                var result = await refreshTokenResponse.Content.ReadFromJsonAsync<AuthResponse>();
+                _token = result.Token;
+
+                await SecureToken();
+                NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+                return true;
+            }
+
+            return false;
+        }
+        public async Task<bool> GetRendering()
+        {
+            return _isPrerendering;
+        }
+
     }
-}
+
+    public class AuthResponse
+    {
+        public string Token { get; set; }
+    }
+
+    public static class JwtParser
+    {
+        public static IEnumerable<Claim> ParseClaimsFromJwt(string jwt)
+        {
+            var claims = new List<Claim>();
+            var payload = jwt.Split('.')[1];
+            var jsonBytes = ParseBase64WithoutPadding(payload);
+            var keyValuePairs = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonBytes);
+
+            if (keyValuePairs != null)
+            {
+                foreach (var kvp in keyValuePairs)
+                {
+                    claims.Add(new Claim(kvp.Key, kvp.Value.ToString()));
+                }
+            }
+
+            return claims;
+        }
+
+        private static byte[] ParseBase64WithoutPadding(string base64)
+        {
+            switch (base64.Length % 4)
+            {
+                case 2: base64 += "=="; break;
+                case 3: base64 += "="; break;
+            }
+            return Convert.FromBase64String(base64);
+        }
+    }
+
+    public class JwtAuthorizationHandler : DelegatingHandler
+    {
+        private readonly CustomAuthenticationStateProvider _authenticationStateProvider;
+        private readonly PostPrerenderService _postPrerenderService;
+
+
+        public JwtAuthorizationHandler(CustomAuthenticationStateProvider authenticationStateProvider, PostPrerenderService postPrerenderService)
+
+        {
+
+            _authenticationStateProvider = authenticationStateProvider ?? throw new ArgumentNullException(nameof(authenticationStateProvider));
+            _postPrerenderService = postPrerenderService ?? throw new ArgumentNullException(nameof(postPrerenderService));
+
+        }
+
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            await _postPrerenderService.ExecuteAfterRenderActionsAsync();
+            string accessToken = await _authenticationStateProvider.GetTokenAsync();
+            Console.WriteLine($"Adding token to request: {accessToken}");
+            if (!string.IsNullOrEmpty(accessToken))
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            }
+
+            // Call base.SendAsync to send the request
+            return await base.SendAsync(request, cancellationToken);
+        }
+
+    }
 
 }
