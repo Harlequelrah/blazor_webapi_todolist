@@ -2,10 +2,12 @@
 @using Microsoft.AspNetCore.Components.WebAssembly.Authentication
 @using test.Services
 @using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Authentication
 @inject IJSRuntime JS
 @inject TodoItemService TodoItemService
 @inject JwtAuthorizationHandler JwtHandler
 @inject NavigationManager Navigation
+@inject CustomAuthenticationStateProvider authstateprovider
 @rendermode InteractiveServer
 
 <h3>Liste des TodoItems</h3>
@@ -75,23 +77,27 @@ else
 </div>
 
 @code {
+
     private List<TodoItem> TodoItems;
     private bool showAddTodoForm = false;
-    private bool firstRender = true;
     private TodoItem newTodoItem = new TodoItem();
+    private bool isFirstRender = true;
 
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            JwtHandler.NotifyPostPrerender();
+            isFirstRender = false;
+            StateHasChanged();
         }
     }
 
     protected override async Task OnInitializedAsync()
     {
         await LoadTodoItems();
+
+
     }
 
     private async Task LoadTodoItems()

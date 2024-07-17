@@ -6,32 +6,39 @@
 @using test.Services
 @inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
-@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject CustomAuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager NavigationManager
-
 
 <h3>Profil</h3>
 <div>
-<p>Utilisateur : @userName</p>
-<p>ID : @userId</p>
+    <p>Utilisateur : @userName</p>
+    <p>ID : @userId</p>
 </div>
 
+<div>
+    <h4>Claims</h4>
+    <ul>
+        @foreach (var claim in claims)
+        {
+            <li>@claim.Type: @claim.Value</li>
+        }
+    </ul>
+</div>
 
 <button class="btn btn-danger" @onclick="Logout">Déconnexion</button>
 <a href="/manage/TodoItem">Todo</a>
+
 @code {
     private string userName = "Chargement...";
     private string userId = "Chargement...";
     private string errorMessage;
+    private IEnumerable<Claim> claims = new List<Claim>();
 
     private async Task Logout()
     {
         try
         {
-            await ((CustomAuthenticationStateProvider)AuthenticationStateProvider).Logout();
-            // Effacer les données locales
-            await JSRuntime.InvokeVoidAsync("localStorage.clear");
-            // Redirection vers la page de login ou une autre page après déconnexion
+            await AuthenticationStateProvider.Logout();
             NavigationManager.NavigateTo("/login");
         }
         catch (Exception ex)
@@ -45,6 +52,7 @@
     {
         if (firstRender)
         {
+            AuthenticationStateProvider.NotifyPostPrerender();
             try
             {
                 var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
@@ -52,8 +60,9 @@
 
                 if (user.Identity.IsAuthenticated)
                 {
-                    userName = user.FindFirst(ClaimTypes.Name)?.Value ?? "Utilisateur inconnu";
-                    userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "ID non trouvé";
+                    userName = user.FindFirst("unique_name")?.Value ?? "Utilisateur inconnu";
+                    userId = user.FindFirst("nameid")?.Value ?? "ID non trouvé";
+                    claims = user.Claims;
                 }
                 else
                 {
@@ -70,5 +79,3 @@
         }
     }
 }
-
-
