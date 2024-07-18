@@ -204,7 +204,7 @@ namespace test.Services
             }
         }
 
-        public void NotifyPostPrerender()
+        public async Task NotifyPostPrerender()
         {
             _isPrerendering = false;
         }
@@ -242,6 +242,7 @@ namespace test.Services
         }
         public async Task<bool> GetRendering()
         {
+
             return _isPrerendering;
         }
 
@@ -286,24 +287,44 @@ namespace test.Services
     public class JwtAuthorizationHandler : DelegatingHandler
     {
         private readonly CustomAuthenticationStateProvider _authenticationStateProvider;
-        private readonly PostPrerenderService _postPrerenderService;
+        private bool _isPrerendering = true;
 
+        private ConcurrentQueue<Func<Task>> _afterRenderActions;
 
-        public JwtAuthorizationHandler(CustomAuthenticationStateProvider authenticationStateProvider, PostPrerenderService postPrerenderService)
+        public JwtAuthorizationHandler(CustomAuthenticationStateProvider authenticationStateProvider)
 
         {
+            _afterRenderActions = new ConcurrentQueue<Func<Task>>();
 
             _authenticationStateProvider = authenticationStateProvider ?? throw new ArgumentNullException(nameof(authenticationStateProvider));
-            _postPrerenderService = postPrerenderService ?? throw new ArgumentNullException(nameof(postPrerenderService));
 
+        }
+        public async Task OnAfterRenderAsync(bool firstRender)
+        {
+            if (_afterRenderActions.TryDequeue(out var action))
+            {
+                await action();
+            }
         }
 
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            await _postPrerenderService.ExecuteAfterRenderActionsAsync();
-            string accessToken = await _authenticationStateProvider.GetTokenAsync();
-            Console.WriteLine($"Adding token to request: {accessToken}");
+            string accessToken = null;
+
+            // Ajouter l'action GetTokenAsync à la liste des actions post-prérendu
+            _afterRenderActions.Enqueue(async () =>
+                    {
+                        accessToken = await _authenticationStateProvider.GetTokenAsync();
+                        Console.WriteLine($"Adding token to request: {accessToken}");
+                    });
+            while (_afterRenderActions.TryDequeue(out var action))
+            {
+                await action();
+            }
+            accessToken = await _authenticationStateProvider.GetTokenAsync();
+            Console.WriteLine($"Adding token: {accessToken}");
+
             if (!string.IsNullOrEmpty(accessToken))
             {
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);

@@ -12,13 +12,13 @@ namespace test.Services
         private readonly HttpClient _authClient;
         private readonly HttpClient _noauthClient;
         private readonly CustomAuthenticationStateProvider _customAuthenticationStateProvider;
-
         private readonly ILogger<TodoItemService> _logger;
 
         public TodoItemService(IHttpClientFactory httpClientFactory, ILogger<TodoItemService> logger, CustomAuthenticationStateProvider customAuthenticationStateProvider)
         {
-            _authClient = httpClientFactory.CreateClient("authClientAPI");
-            _noauthClient = httpClientFactory.CreateClient("noauthClientAPI");
+            _authClient = httpClientFactory.CreateClient("authClientAPI") ?? throw new ArgumentNullException(nameof(httpClientFactory));
+            _noauthClient = httpClientFactory.CreateClient("noauthClientAPI") ?? throw new ArgumentNullException(nameof(httpClientFactory));
+            _logger = logger;
             _logger = logger;
             _customAuthenticationStateProvider = customAuthenticationStateProvider;
         }
@@ -27,7 +27,9 @@ namespace test.Services
         {
             try
             {
+                _logger.LogInformation("Getting todo items.");
                 var todoItemsArray = await _noauthClient.GetFromJsonAsync<TodoItem[]>("todo");
+                _logger.LogInformation("Successfully retrieved todo items.");
                 return new List<TodoItem>(todoItemsArray);
             }
             catch (Exception ex)
@@ -41,7 +43,10 @@ namespace test.Services
         {
             try
             {
-                return await _noauthClient.GetFromJsonAsync<TodoItem>($"todo/{id}");
+                _logger.LogInformation($"Getting todo item with ID {id}.");
+                var todoItem = await _noauthClient.GetFromJsonAsync<TodoItem>($"todo/{id}");
+                _logger.LogInformation($"Successfully retrieved todo item with ID {id}.");
+                return todoItem;
             }
             catch (Exception ex)
             {
@@ -54,8 +59,11 @@ namespace test.Services
         {
             try
             {
+                _logger.LogInformation($"Creating todo item: {todoItem.Title}.");
                 var response = await _noauthClient.PostAsJsonAsync("todo", todoItem);
-                return await response.Content.ReadFromJsonAsync<TodoItem>();
+                var createdItem = await response.Content.ReadFromJsonAsync<TodoItem>();
+                _logger.LogInformation($"Successfully created todo item with ID {createdItem.Id}.");
+                return createdItem;
             }
             catch (Exception ex)
             {
@@ -68,7 +76,9 @@ namespace test.Services
         {
             try
             {
+                _logger.LogInformation($"Updating todo item with ID {id}.");
                 await _authClient.PutAsJsonAsync($"todo/{id}", todoItem);
+                _logger.LogInformation($"Successfully updated todo item with ID {id}.");
             }
             catch (Exception ex)
             {
@@ -81,11 +91,13 @@ namespace test.Services
         {
             try
             {
+                _logger.LogInformation($"Setting todo item with ID {id} as done.");
                 var todoItem = await GetTodoItemAsync(id);
                 if (todoItem != null)
                 {
                     todoItem.IsCompleted = true;
                     await UpdateTodoItemAsync(id, todoItem);
+                    _logger.LogInformation($"Successfully set todo item with ID {id} as done.");
                 }
             }
             catch (Exception ex)
@@ -99,11 +111,13 @@ namespace test.Services
         {
             try
             {
+                _logger.LogInformation($"Setting todo item with ID {id} as not done.");
                 var todoItem = await GetTodoItemAsync(id);
                 if (todoItem != null)
                 {
                     todoItem.IsCompleted = false;
                     await UpdateTodoItemAsync(id, todoItem);
+                    _logger.LogInformation($"Successfully set todo item with ID {id} as not done.");
                 }
             }
             catch (Exception ex)
@@ -117,10 +131,24 @@ namespace test.Services
         {
             try
             {
-                var isprerendering = await _customAuthenticationStateProvider.GetRendering();
-                Console.WriteLine($" rendering in the game {isprerendering}");
+                if (_authClient == null)
+                {
+                    _logger.LogError("HttpClient '_authClient' is null.");
+                    return false;
+                }
+                _logger.LogInformation($"Deleting todo item with ID {id}.");
+                _customAuthenticationStateProvider.NotifyPostPrerender();
                 var response = await _authClient.DeleteAsync($"todo/{id}");
-                return response.IsSuccessStatusCode;
+                if (response.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation($"Successfully deleted todo item with ID {id}.");
+                    return true;
+                }
+                else
+                {
+                    _logger.LogError($"Failed to delete todo item with ID {id}. Status code: {response.StatusCode}");
+                    return false;
+                }
             }
             catch (Exception ex)
             {
@@ -129,6 +157,7 @@ namespace test.Services
             }
         }
     }
+
     public class TodoItem
     {
         public int Id { get; set; }

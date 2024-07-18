@@ -7,7 +7,8 @@
 @inject TodoItemService TodoItemService
 @inject JwtAuthorizationHandler JwtHandler
 @inject NavigationManager Navigation
-@inject CustomAuthenticationStateProvider authstateprovider
+@inject PostPrerenderService postpre
+@inject CustomAuthenticationStateProvider ASP
 @rendermode InteractiveServer
 
 <h3>Liste des TodoItems</h3>
@@ -77,12 +78,10 @@ else
 </div>
 
 @code {
-
     private List<TodoItem> TodoItems;
     private bool showAddTodoForm = false;
     private TodoItem newTodoItem = new TodoItem();
     private bool isFirstRender = true;
-
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -96,8 +95,6 @@ else
     protected override async Task OnInitializedAsync()
     {
         await LoadTodoItems();
-
-
     }
 
     private async Task LoadTodoItems()
@@ -144,22 +141,17 @@ else
     private async Task Delete(int id)
     {
         var confirmDelete = await JS.InvokeAsync<bool>("confirm", "Voulez-vous vraiment supprimer cette TodoItem ?");
-        Console.WriteLine($"is first render {isFirstRender}");
-        authstateprovider.NotifyPostPrerender();
-        var isprerendering= await authstateprovider.GetRendering();
-
-        Console.WriteLine($" rendering {isprerendering}");
-        var token = await authstateprovider.GetTokenAsync();
-        Console.WriteLine($" token {token}");
-        if (confirmDelete)
+        if (confirmDelete && !isFirstRender)
         {
             try
             {
-                bool result = await TodoItemService.DeleteTodoItemAsync(id);
-                if (result)
-                {
-                    await LoadTodoItems(); // Refresh the list after deletion
-                }
+                Console.WriteLine("Deleting TodoItem with ID: " + id);
+                // Ajouter l'action DeleteTodoItemAsync à la file d'attente post-prérendu
+                    bool result = await TodoItemService.DeleteTodoItemAsync(id);
+                    if (result)
+                    {
+                        await LoadTodoItems(); // Refresh the list after deletion
+                    }
             }
             catch (Exception ex)
             {
@@ -172,8 +164,14 @@ else
     {
         try
         {
-            await TodoItemService.SetTodoItemDoneAsync(todoItemId);
-            await LoadTodoItems(); // Refresh the list after update
+            // Ajouter l'action SetTodoItemDoneAsync à la file d'attente post-prérendu
+            postpre.AddAfterRenderAction(async () =>
+            {
+                await TodoItemService.SetTodoItemDoneAsync(todoItemId);
+                await LoadTodoItems(); // Refresh the list after update
+            });
+
+            await postpre.ExecuteAfterRenderActionsAsync();
         }
         catch (Exception ex)
         {
@@ -185,8 +183,14 @@ else
     {
         try
         {
-            await TodoItemService.SetTodoItemNotDoneAsync(todoItemId);
-            await LoadTodoItems(); // Refresh the list after update
+            // Ajouter l'action SetTodoItemNotDoneAsync à la file d'attente post-prérendu
+            postpre.AddAfterRenderAction(async () =>
+            {
+                await TodoItemService.SetTodoItemNotDoneAsync(todoItemId);
+                await LoadTodoItems(); // Refresh the list after update
+            });
+
+            await postpre.ExecuteAfterRenderActionsAsync();
         }
         catch (Exception ex)
         {
