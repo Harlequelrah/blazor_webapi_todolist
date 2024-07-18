@@ -45,3 +45,5 @@ E:\Programmation\Visual Studio 2022\source\test\obj\Debug\net9.0\ref\test.dll
 E:\Programmation\Visual Studio 2022\source\test\obj\Debug\net9.0\test.sourcelink.json
 E:\Programmation\Visual Studio 2022\source\test\bin\Debug\net9.0\Microsoft.AspNetCore.Components.WebAssembly.Authentication.dll
 E:\Programmation\Visual Studio 2022\source\test\obj\Debug\net9.0\compressed\s9p6mxxdem.gz
+E:\Programmation\Visual Studio 2022\source\test\obj\Debug\net9.0\compressed\15602f1p6t.gz
+E:\Programmation\Visual Studio 2022\source\test\obj\Debug\net9.0\compressed\wgwrr6n0rh.gz

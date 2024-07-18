@@ -1,0 +1,8 @@
+@page "/auth"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@attribute [Authorize]
+
+<h3>Page Protégée par Authorize</h3>
+
+<p>Cette page est protégée par l'attribut Authorize. Vous ne pouvez y accéder que si vous êtes connecté.</p>

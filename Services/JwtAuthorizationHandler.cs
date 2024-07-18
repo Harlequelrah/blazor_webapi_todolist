@@ -5,16 +5,9 @@ namespace test.Services
 {
     public class JwtAuthorizationHandler : DelegatingHandler
     {
-        private readonly CustomAuthenticationStateProvider _authenticationStateProvider;
-
-
-        public JwtAuthorizationHandler(CustomAuthenticationStateProvider authenticationStateProvider)
-
+        public JwtAuthorizationHandler()
         {
-            _authenticationStateProvider = authenticationStateProvider;
-
         }
-
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {

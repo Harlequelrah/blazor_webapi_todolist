@@ -9,14 +9,12 @@
 @inject TodoItemService TodoItemService
 @inject JwtAuthorizationHandler JwtHandler
 @inject NavigationManager Navigation
-@inject PostPrerenderService postpre
 @inject CustomAuthenticationStateProvider ASP
 @rendermode InteractiveServer
 
 <h3>Liste des TodoItems</h3>
 
 <p><button class="btn btn-success btn-sm mx-1" @onclick="ShowAddTodoForm">Ajouter une nouvelle TodoItem</button></p>
-
 @if (TodoItems == null || TodoItems.Count == 0)
 {
     <p>Aucune Tâche n'a été ajoutée</p>
@@ -25,7 +23,7 @@ else
 {
     <table class="table table-bordered">
         <thead>
-            <tr>
+            <tr >
                 <th>Id</th>
                 <th>Nom</th>
                 <th>Is Completed</th>
@@ -41,7 +39,7 @@ else
                     <td>@todoItem.IsCompleted</td>
                     <td>
                         <button class="btn btn-danger text-dark" @onclick="() => Delete(todoItem.Id)" title="Supprimer">
-                            <i class="bi bi-trash"></i> Supprimer
+                            <i class="bi bi-trash"></i>
                         </button>
                         <button class="btn btn-sm btn-success" @onclick="() => SetDone(todoItem.Id)">
                             <i class="bi bi-check-circle"></i>
@@ -49,12 +47,14 @@ else
                         <button class="btn btn-sm btn-danger" @onclick="() => SetNotDone(todoItem.Id)">
                             <i class="bi bi-x-circle"></i>
                         </button>
+
                     </td>
                 </tr>
             }
         </tbody>
     </table>
 }
+
 
 <div tabindex="-1" id="addTodoModal" style="display:@(showAddTodoForm ? "block" : "none");">
     <div class="modal-dialog">
@@ -84,6 +84,7 @@ else
     private bool showAddTodoForm = false;
     private TodoItem newTodoItem = new TodoItem();
     private bool isFirstRender = true;
+    private string token= null;
 
 protected override async Task OnAfterRenderAsync(bool firstRender)
 {
@@ -94,6 +95,7 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
         isFirstRender = false;
         StateHasChanged();
     }
+    token =await ASP.GetTokenAsync();
     bool render = await ASP.GetRendering();
     _logger.LogInformation($"Rendering status: {render}");
     await ASP.OnAfterRenderAsync(firstRender);
@@ -149,13 +151,13 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
     private async Task Delete(int id)
     {
         var confirmDelete = await JS.InvokeAsync<bool>("confirm", "Voulez-vous vraiment supprimer cette TodoItem ?");
-        if (confirmDelete && !isFirstRender)
+        if (confirmDelete && !isFirstRender && !string.IsNullOrEmpty(token))
         {
             try
             {
                 Console.WriteLine("Deleting TodoItem with ID: " + id);
                 // Ajouter l'action DeleteTodoItemAsync à la file d'attente post-prérendu
-                    bool result = await TodoItemService.DeleteTodoItemAsync(id);
+                    bool result = await TodoItemService.DeleteTodoItemAsync(token,id);
                     if (result)
                     {
                         await LoadTodoItems(); // Refresh the list after deletion
@@ -172,14 +174,11 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         try
         {
-            // Ajouter l'action SetTodoItemDoneAsync à la file d'attente post-prérendu
-            postpre.AddAfterRenderAction(async () =>
-            {
-                await TodoItemService.SetTodoItemDoneAsync(todoItemId);
-                await LoadTodoItems(); // Refresh the list after update
-            });
-
-            await postpre.ExecuteAfterRenderActionsAsync();
+            if(!isFirstRender && !string.IsNullOrEmpty(token)){
+                await TodoItemService.SetTodoItemDoneAsync(token,todoItemId);
+                await LoadTodoItems();
+            }
+                // Refresh the list after update
         }
         catch (Exception ex)
         {
@@ -191,14 +190,10 @@ protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         try
         {
-            // Ajouter l'action SetTodoItemNotDoneAsync à la file d'attente post-prérendu
-            postpre.AddAfterRenderAction(async () =>
-            {
-                await TodoItemService.SetTodoItemNotDoneAsync(todoItemId);
-                await LoadTodoItems(); // Refresh the list after update
-            });
-
-            await postpre.ExecuteAfterRenderActionsAsync();
+    if(!isFirstRender && !string.IsNullOrEmpty(token)){
+                await TodoItemService.SetTodoItemNotDoneAsync(token ,todoItemId);
+                await LoadTodoItems();
+            }
         }
         catch (Exception ex)
         {
