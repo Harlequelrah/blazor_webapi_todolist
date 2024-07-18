@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
@@ -11,15 +12,17 @@ namespace test.Services
     {
         private readonly HttpClient _authClient;
         private readonly HttpClient _noauthClient;
+        private readonly JwtAuthorizationHandler _jwtAuthorizationHandler;
         private readonly CustomAuthenticationStateProvider _customAuthenticationStateProvider;
         private readonly ILogger<TodoItemService> _logger;
 
-        public TodoItemService(IHttpClientFactory httpClientFactory, ILogger<TodoItemService> logger, CustomAuthenticationStateProvider customAuthenticationStateProvider)
+        public TodoItemService(IHttpClientFactory httpClientFactory, ILogger<TodoItemService> logger, CustomAuthenticationStateProvider customAuthenticationStateProvider,JwtAuthorizationHandler jwtAuthorizationHandler)
         {
             _authClient = httpClientFactory.CreateClient("authClientAPI") ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _noauthClient = httpClientFactory.CreateClient("noauthClientAPI") ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _logger = logger;
             _logger = logger;
+            _jwtAuthorizationHandler=jwtAuthorizationHandler;
             _customAuthenticationStateProvider = customAuthenticationStateProvider;
         }
 
@@ -136,32 +139,33 @@ namespace test.Services
                     _logger.LogError("HttpClient '_authClient' is null.");
                     return false;
                 }
+                var token = await _customAuthenticationStateProvider.GetTokenAsync();
                 _logger.LogInformation($"Deleting todo item with ID {id}.");
-                _customAuthenticationStateProvider.NotifyPostPrerender();
-                var response = await _authClient.DeleteAsync($"todo/{id}");
-                if (response.IsSuccessStatusCode)
-                {
-                    _logger.LogInformation($"Successfully deleted todo item with ID {id}.");
-                    return true;
-                }
-                else
-                {
-                    _logger.LogError($"Failed to delete todo item with ID {id}. Status code: {response.StatusCode}");
-                    return false;
-                }
+                var requestMessage = new HttpRequestMessage(HttpMethod.Delete, $"todo/{id}");
+            var response = await _authClient.AuthSendAsync(requestMessage,token,CancellationToken.None);
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation($"Successfully deleted todo item with ID {id}.");
+                return true;
             }
+            else
+            {
+                _logger.LogError($"Failed to delete todo item with ID {id}. Status code: {response.StatusCode}");
+                return false;
+            }
+        }
             catch (Exception ex)
             {
                 _logger.LogError($"Error deleting todo item {id}: {ex.Message}");
                 return false; // Retourne false en cas d'erreur
             }
-        }
+}
     }
 
     public class TodoItem
-    {
-        public int Id { get; set; }
-        public string Title { get; set; }
-        public bool IsCompleted { get; set; }
-    }
+{
+    public int Id { get; set; }
+    public string Title { get; set; }
+    public bool IsCompleted { get; set; }
+}
 }

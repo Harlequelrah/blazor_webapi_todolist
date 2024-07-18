@@ -4,6 +4,8 @@
 @using Microsoft.JSInterop
 @using Microsoft.AspNetCore.Authentication
 @inject IJSRuntime JS
+@using Microsoft.Extensions.Logging
+@inject ILogger<ManageTodo> _logger
 @inject TodoItemService TodoItemService
 @inject JwtAuthorizationHandler JwtHandler
 @inject NavigationManager Navigation
@@ -83,14 +85,20 @@ else
     private TodoItem newTodoItem = new TodoItem();
     private bool isFirstRender = true;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+protected override async Task OnAfterRenderAsync(bool firstRender)
+{
+    if (firstRender)
     {
-        if (firstRender)
-        {
-            isFirstRender = false;
-            StateHasChanged();
-        }
+        _logger.LogInformation("First render, notifying post prerender");
+        await ASP.NotifyPostPrerender();
+        isFirstRender = false;
+        StateHasChanged();
     }
+    bool render = await ASP.GetRendering();
+    _logger.LogInformation($"Rendering status: {render}");
+    await ASP.OnAfterRenderAsync(firstRender);
+}
+
 
     protected override async Task OnInitializedAsync()
     {
