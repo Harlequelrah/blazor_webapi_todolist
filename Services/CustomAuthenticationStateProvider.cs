@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.JSInterop;
 using System.Net.Http;
 using Microsoft.Extensions.Configuration;
-
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Json;
@@ -32,7 +32,6 @@ namespace test.Services
         private bool _isPrerendering = true;
         private ConcurrentQueue<Func<Task>> _afterRenderActions;
         private readonly IHttpClientFactory _httpClientFactory;
-
         public CustomAuthenticationStateProvider(
             HttpClient httpClient,
             IJSRuntime jsRuntime,
@@ -52,13 +51,13 @@ namespace test.Services
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
         }
 
+
+
         public override async Task<AuthenticationState> GetAuthenticationStateAsync()
         {
             _logger.LogInformation("Getting authentication state...");
-
-            var identity = new ClaimsIdentity();
             _token = await GetTokenAsync();
-
+            var identity = new ClaimsIdentity();
             if (!string.IsNullOrEmpty(_token))
             {
                 try
@@ -71,10 +70,12 @@ namespace test.Services
                 }
             }
 
-            var user = new ClaimsPrincipal(identity);
-            _logger.LogInformation($"User authenticated: {user.Identity.IsAuthenticated}");
-            return new AuthenticationState(user);
+
+            var current_user = new ClaimsPrincipal(identity);
+            _logger.LogInformation($"User authenticated: {current_user.Identity.IsAuthenticated}");
+            return new AuthenticationState(current_user);
         }
+
 
         public async Task Login(string username, string password)
         {
@@ -102,10 +103,22 @@ namespace test.Services
                 }
                 _token = result.Token;
                 await SecureToken();
+                var identity = new ClaimsIdentity();
+                if (!string.IsNullOrEmpty(_token))
+                {
+                    try
+                    {
+                        identity = new ClaimsIdentity(JwtParser.ParseClaimsFromJwt(_token), "jwt");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error parsing JWT claims.");
+                    }
+                }
 
-                var claims = new List<Claim> { new Claim("access_token", _token) };
-                var claimsIdentity = new ClaimsIdentity(claims, "Cookies");
-                var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
+                var current_user = new ClaimsPrincipal(identity);
+                _logger.LogInformation($"User authenticated: {current_user.Identity.IsAuthenticated}");
+
 
                 var authProperties = new AuthenticationProperties
                 {
@@ -120,7 +133,8 @@ namespace test.Services
                     _afterRenderActions.Enqueue(async () =>
                     {
 
-                        await _httpContextAccessor.HttpContext.SignInAsync("Cookies", claimsPrincipal, authProperties);
+                        // await _httpContextAccessor.HttpContext.SignInAsync("Cookies", current_user, authProperties);
+                        await _httpContextAccessor.HttpContext.SignInAsync("jwt", current_user, authProperties);
                         _logger.LogInformation("User signed in.");
 
                         NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
@@ -128,7 +142,8 @@ namespace test.Services
                 }
                 else
                 {
-                    await _httpContextAccessor.HttpContext.SignInAsync("Cookies", claimsPrincipal, authProperties);
+                    await _httpContextAccessor.HttpContext.SignInAsync("jwt", current_user, authProperties);
+                    // await _httpContextAccessor.HttpContext.SignInAsync("Cookies", current_user, authProperties);
                     _logger.LogInformation("User signed in.");
                     NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
                 }
@@ -267,6 +282,17 @@ namespace test.Services
         public async Task<string> GetToken()
         {
             return _token;
+        }
+        public async Task<string> GetAccessToken()
+        {
+            var authState = await GetAuthenticationStateAsync();
+            var user = authState.User;
+            string token = null;
+            if (user.Identity.IsAuthenticated)
+            {
+                token = user.FindFirst("access_token")?.Value;
+            }
+            return token;
         }
 
     }

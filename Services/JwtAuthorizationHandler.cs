@@ -5,12 +5,16 @@ namespace test.Services
 {
     public class JwtAuthorizationHandler : DelegatingHandler
     {
-        public JwtAuthorizationHandler()
+        private CustomAuthenticationStateProvider _stateProvider;
+        public JwtAuthorizationHandler(CustomAuthenticationStateProvider stateProvider)
         {
+            _stateProvider = stateProvider;
         }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            var token = await _stateProvider.GetAccessToken();
+            Console.WriteLine(token);
             return await base.SendAsync(request, cancellationToken);
         }
 

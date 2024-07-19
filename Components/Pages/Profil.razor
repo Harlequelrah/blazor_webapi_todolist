@@ -9,6 +9,7 @@
 @inject CustomAuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager NavigationManager
 
+
 <h3>Profil</h3>
 <div>
     <p>Utilisateur : @userName</p>
@@ -49,6 +50,7 @@
         }
     }
 
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -71,7 +73,7 @@
                     NavigationManager.NavigateTo("/login", true);
                 }
 
-                StateHasChanged(); // Informer Blazor que l'état a changé et doit être rendu à nouveau
+                StateHasChanged();
             }
             catch (Exception ex)
             {
@@ -79,5 +81,5 @@
                 Console.WriteLine($"Exception lors de l'initialisation du profil : {ex}");
             }
         }
-    }
+}
 }

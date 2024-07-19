@@ -1,8 +1,21 @@
 @page "/auth"
-@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
-@attribute [Authorize]
+@using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Authorization
+@using test.Services
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+@inject CustomAuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
 
 <h3>Page Protégée par Authorize</h3>
 
 <p>Cette page est protégée par l'attribut Authorize. Vous ne pouvez y accéder que si vous êtes connecté.</p>
+@code{
+      protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {}
+    }
+}
