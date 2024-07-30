@@ -1,21 +1,31 @@
 @page "/auth"
-@using System.Security.Claims
-@using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.JSInterop
-@using Microsoft.AspNetCore.Authorization
-@using test.Services
-@inject IJSRuntime JSRuntime
-@rendermode InteractiveServer
+@using blazor_giftcard.Services
 @inject CustomAuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager NavigationManager
 
-<h3>Page Protégée par Authorize</h3>
+@if (_isLoading)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <h3>Page Protégée par Authorize</h3>
+    <p>Cette page est protégée par l'attribut Authorize. Vous ne pouvez y accéder que si vous êtes connecté.</p>
+}
 
-<p>Cette page est protégée par l'attribut Authorize. Vous ne pouvez y accéder que si vous êtes connecté.</p>
-@code{
-      protected override async Task OnAfterRenderAsync(bool firstRender)
+@code {
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
     {
-        if (firstRender)
-        {}
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity.IsAuthenticated)
+        {
+            _isLoading = false;
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/login");
+        }
     }
 }
